@@ -6,21 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"io/ioutil"
+	//"strings"
 
 	shell "github.com/ipfs/go-ipfs-api"
 	"github.com/urfave/cli/v2"
 )
 
 var shellInstance *shell.Shell
+var gatewayURL = "https://ipfs.io/ipfs/"
 
 func main() {
 	app := &cli.App{
 		Name:  "eduFs",
-		Usage: "ipfs office file management application",
+		Usage: "IPFS file and folder management application",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "node",
-				Value: "/ip4/91.208.92.6/tcp/8000",
+				Value: "/ip4/91.208.92.6/tcp/8000", // Change this to your IPFS node API URL
 				Usage: "IPFS node API URL",
 			},
 		},
@@ -53,38 +55,27 @@ func main() {
 		},
 		{
 			Name:  "add",
-			Usage: "Add a file to IPFS and pin it to the node",
+			Usage: "Add a file or folder to IPFS and pin it to the node",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "path",
-					Usage: "Path to the file to add",
+					Usage: "Path to the file or folder to add",
 				},
 			},
 			Action: func(c *cli.Context) error {
-				filePath := c.String("path")
-				if filePath == "" {
-					fmt.Println("Please provide a file path using --path")
+				path := c.String("path")
+				if path == "" {
+					fmt.Println("Please provide a file or folder path using --path")
 					return nil
 				}
 
-				file, err := os.Open(filePath)
+				cid, err := addPathToIPFS(path)
 				if err != nil {
-					fmt.Println("Error opening file:", err)
+					fmt.Println("Error adding file or folder to IPFS:", err)
 					return err
 				}
-				defer file.Close()
 
-				res, err := shellInstance.Add(file)
-				if err != nil {
-					fmt.Println("Error adding file to IPFS:", err)
-					return err
-				}
-				err = shellInstance.Pin(res)
-				if err != nil {
-					fmt.Println("Error pinning file to IPFS:", err)
-					return err
-				}
-				fmt.Printf("File added and pinned to IPFS.\nCID: %s\nURL: https://ipfs.io/ipfs/%s\n", res, res)
+				fmt.Printf("File or folder added and pinned to IPFS.\nCID: %s\nURL: %s%s\n", cid, gatewayURL, cid)
 
 				return nil
 			},
@@ -160,25 +151,12 @@ func main() {
 				// Upload all files to IPFS
 				var cids []string
 				for _, filePath := range files {
-					file, err := os.Open(filePath)
+					cid, err := addFileToIPFS(filePath)
 					if err != nil {
-						fmt.Println("Error opening file:", err)
 						return err
 					}
-					defer file.Close()
-
-					res, err := shellInstance.Add(file)
-					if err != nil {
-						fmt.Println("Error adding file to IPFS:", err)
-						return err
-					}
-					// Pin the file to the IPFS node
-					err = shellInstance.Pin(res)
-					if err != nil {
-						fmt.Println("Error pinning file to IPFS:", err)
-						return err
-					}
-					cids = append(cids, res)
+					fmt.Printf("File %s added and pinned to IPFS.\nCID: %s\nURL: %s%s\n", filePath, cid, gatewayURL, cid)
+					cids = append(cids, cid)
 				}
 
 				ipnsKey := c.String("ipns-key")
@@ -188,10 +166,10 @@ func main() {
 						fmt.Println("Error publishing to IPNS:", err)
 						return err
 					}
-					fmt.Printf("Directory published successfully via IPNS!\nIPNS Key: %s\nIPNS Link: https://ipfs.io/ipns/%s\n", ipnsKey, ipnsKey)
+					fmt.Printf("Directory published successfully via IPNS!\nIPNS Key: %s\nIPNS Link: %s%s\n", ipnsKey, gatewayURL, ipnsKey)
 					return nil
 				} else {
-					fmt.Printf("Directory published successfully via IPFS!\nIPFS Link: https://ipfs.io/ipfs/%s\n", cids[0])
+					fmt.Printf("Directory published successfully via IPFS!\nIPFS Link: %s%s\n", gatewayURL, cids[0])
 					return nil
 				}
 			},
@@ -249,4 +227,69 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func addPathToIPFS(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	if info.IsDir() {
+		return addFolderToIPFS(path)
+	}
+
+	return addFileToIPFS(path)
+}
+
+func addFileToIPFS(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	res, err := shellInstance.Add(file)
+	if err != nil {
+		return "", err
+	}
+
+	// Pin the file to the IPFS node
+	err = shellInstance.Pin(res)
+	if err != nil {
+		return "", err
+	}
+
+	return res, nil
+}
+
+func addFolderToIPFS(folderPath string) (string, error) {
+	var files []string
+	err := filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no files found in folder")
+	}
+
+	var cids []string
+	for _, filePath := range files {
+		cid, err := addFileToIPFS(filePath)
+		if err != nil {
+			return "", err
+		}
+		cids = append(cids, cid)
+	}
+
+	return cids[0], nil
 }
