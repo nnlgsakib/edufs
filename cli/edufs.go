@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	//"strings"
-
+	
 	shell "github.com/ipfs/go-ipfs-api"
 	"github.com/urfave/cli/v2"
 )
 
 var shellInstance *shell.Shell
-var gatewayURL = "https://ipfs.io/ipfs/"
+var gatewayURL = "https://gate-ipfs.web3twenty.com/ipfs/"
 
 func main() {
 	app := &cli.App{
@@ -22,7 +22,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "node",
-			    Value: "http://api-ipfs.web3twenty.com:8000", 
+			    Value: "https://api-ipfs.web3twenty.com", 
 				Usage: "IPFS node API URL",
 			},
 		},
