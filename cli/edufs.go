@@ -22,7 +22,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "node",
-				Value: "/ip4/91.208.92.6/tcp/8000", // Change this to your IPFS node API URL
+			    Value: "http://api-ipfs.web3twenty.com:8000", 
 				Usage: "IPFS node API URL",
 			},
 		},
