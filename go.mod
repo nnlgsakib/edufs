@@ -1,4 +1,4 @@
-module ipfetch
+module edufs
 
 go 1.20
 
