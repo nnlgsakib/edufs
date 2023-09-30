@@ -1,4 +1,4 @@
-module edufs
+module github.com/nnlgsakib/edufs
 
 go 1.20
 
