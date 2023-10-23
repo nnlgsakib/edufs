@@ -1,7 +1,7 @@
 # eduFs - IPFS File and Folder Management Application
 
-![GitHub](https://img.shields.io/github/license/yourusername/eduFs)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yourusername/eduFs)
+![GitHub](https://img.shields.io/github/license/nnlgsakib/eduFs)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/nnlgsakib/eduFs)
 
 eduFs is an IPFS-based file and folder management application written in Go. It allows you to interact with the InterPlanetary File System (IPFS) to add, retrieve, and manage files and directories.
 
