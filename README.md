@@ -19,9 +19,9 @@ Usage
 To use eduFs, you can build and run the Go program. Here are some example commands:
 
 # Get the status of your IPFS node:
-'''
+```
 eduFs status --node https://your-ipfs-node-url.com
-'''
+```
 
 License
 This project is licensed under the MIT License - see the LICENSE file for details.
