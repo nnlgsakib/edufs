@@ -19,7 +19,7 @@ Usage
 To use eduFs, you can build and run the Go program. Here are some example commands:
 
 # Get the status of your IPFS node:
-'''shell
+'''
 eduFs status --node https://your-ipfs-node-url.com
 '''
 
