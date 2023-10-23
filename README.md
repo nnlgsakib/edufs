@@ -21,7 +21,12 @@ To use eduFs, you can build and run the Go program. Here are some example comman
 # Get the status of your IPFS node:
 
 ```
-eduFs status --node https://your-ipfs-node-url.com
+edufs status 
+```
+
+# Add a file or folder to IPFS:
+```shell
+eduFs add --path /path/to/your/file-or-folder
 ```
 
 License
