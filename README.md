@@ -26,8 +26,25 @@ edufs status
 
 # Add a file or folder to IPFS:
 ```shell
-eduFs add --path /path/to/your/file-or-folder
+edufs add --path /path/to/your/file-or-folder
 ```
+# Retrieve a file from IPFS by CID:
+```shell
+edufs cat --cid your-cid
+```
+# Publish a directory on IPFS and IPNS:
+```shell
+edufs publish --path /path/to/your/directory
+
+```
+
+# Download a file from IPFS:
+
+```shell
+edufs download --cid your-cid --output /path/to/save/file
+
+```
+
 
 License
 This project is licensed under the MIT License - see the LICENSE file for details.
