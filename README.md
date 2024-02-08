@@ -18,6 +18,10 @@ eduFs is an IPFS-based file and folder management application written in Go. It 
 Usage
 To use eduFs, install it by clicking this  [installation url](https://ipfs.io/ipfs/QmebZ46pvJfSgG4AMTNnun3qZqpZxco2EzdAqRdSjZ85yd?filename=edufs.exe)
 
+```
+note: this url is for windows only you have to build by yourself to run on linux or macOS
+```
+
 # Get the status of your IPFS node:
 
 ```
