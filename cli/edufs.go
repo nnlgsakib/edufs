@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"io/ioutil"
-	//"strings"
-	
+
+	"github.com/cheggaaa/pb/v3"
 	shell "github.com/ipfs/go-ipfs-api"
 	"github.com/urfave/cli/v2"
 )
@@ -22,12 +22,12 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "node",
-			    Value: "http://api-ipfs.web3twenty.com:3001", 
+				Value: "http://api-ipfs.web3twenty.com:3001",
 				Usage: "IPFS node API URL",
 			},
 		},
 		EnableBashCompletion: true,
-		HideHelp:              false,
+		HideHelp:             false,
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -229,6 +229,40 @@ func main() {
 	}
 }
 
+func addFileToIPFS(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+
+	// Create a progress bar
+	bar := pb.Full.Start64(fileInfo.Size())
+	bar.Set(pb.Bytes, true)
+
+	// Create a reader with a proxy reader which updates the progress bar
+	reader := bar.NewProxyReader(file)
+
+	res, err := shellInstance.Add(reader)
+	if err != nil {
+		return "", err
+	}
+
+	// Pin the file to the IPFS node
+	err = shellInstance.Pin(res)
+	if err != nil {
+		return "", err
+	}
+
+	bar.Finish()
+	return res, nil
+}
+
 func addPathToIPFS(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -240,27 +274,6 @@ func addPathToIPFS(path string) (string, error) {
 	}
 
 	return addFileToIPFS(path)
-}
-
-func addFileToIPFS(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	res, err := shellInstance.Add(file)
-	if err != nil {
-		return "", err
-	}
-
-	// Pin the file to the IPFS node
-	err = shellInstance.Pin(res)
-	if err != nil {
-		return "", err
-	}
-
-	return res, nil
 }
 
 func addFolderToIPFS(folderPath string) (string, error) {
