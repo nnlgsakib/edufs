@@ -13,7 +13,7 @@ import (
 )
 
 var shellInstance *shell.Shell
-var gatewayURL = "https://gate-ipfs.web3twenty.com/ipfs/"
+var gatewayURL = "http://api-ipfs.web3twenty.com:3002/ipfs/"
 
 func main() {
 	app := &cli.App{
@@ -22,7 +22,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "node",
-			    Value: "https://api-ipfs.web3twenty.com", 
+			    Value: "http://api-ipfs.web3twenty.com:3001", 
 				Usage: "IPFS node API URL",
 			},
 		},
