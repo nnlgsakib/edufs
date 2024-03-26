@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/cheggaaa/pb/v3"
 	shell "github.com/ipfs/go-ipfs-api"
@@ -41,16 +40,7 @@ func main() {
 			Name:  "status",
 			Usage: "Get the status of your IPFS node",
 			Action: func(c *cli.Context) error {
-				nodeInfo, err := shellInstance.ID()
-				if err != nil {
-					fmt.Println("Error getting node status:", err)
-					return err
-				}
-				fmt.Println("Connected to IPFS node:")
-				fmt.Println("Node ID:", nodeInfo.ID)
-				fmt.Println("Agent Version:", nodeInfo.AgentVersion)
-				fmt.Println("Protocol Version:", nodeInfo.ProtocolVersion)
-				return nil
+				return getStatus()
 			},
 		},
 		{
@@ -63,21 +53,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				path := c.String("path")
-				if path == "" {
-					fmt.Println("Please provide a file or folder path using --path")
-					return nil
-				}
-
-				cid, err := addPathToIPFS(path)
-				if err != nil {
-					fmt.Println("Error adding file or folder to IPFS:", err)
-					return err
-				}
-
-				fmt.Printf("File or folder added and pinned to IPFS.\nCID: %s\nURL: %s%s\n", cid, gatewayURL, cid)
-
-				return nil
+				return addFileOrFolder(c.String("path"))
 			},
 		},
 		{
@@ -90,27 +66,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				cid := c.String("cid")
-				if cid == "" {
-					fmt.Println("Please provide a CID using --cid")
-					return nil
-				}
-
-				reader, err := shellInstance.Cat(cid)
-				if err != nil {
-					fmt.Println("Error retrieving file from IPFS:", err)
-					return err
-				}
-				defer reader.Close()
-
-				data, err := ioutil.ReadAll(reader)
-				if err != nil {
-					fmt.Println("Error reading data:", err)
-					return err
-				}
-
-				fmt.Print(string(data))
-				return nil
+				return retrieveFile(c.String("cid"))
 			},
 		},
 		{
@@ -127,51 +83,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				dirPath := c.String("path")
-				if dirPath == "" {
-					fmt.Println("Please provide a directory path using --path")
-					return nil
-				}
-
-				var files []string
-				err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					if !info.IsDir() {
-						files = append(files, path)
-					}
-					return nil
-				})
-				if err != nil {
-					fmt.Println("Error scanning directory:", err)
-					return err
-				}
-
-				// Upload all files to IPFS
-				var cids []string
-				for _, filePath := range files {
-					cid, err := addFileToIPFS(filePath)
-					if err != nil {
-						return err
-					}
-					fmt.Printf("File %s added and pinned to IPFS.\nCID: %s\nURL: %s%s\n", filePath, cid, gatewayURL, cid)
-					cids = append(cids, cid)
-				}
-
-				ipnsKey := c.String("ipns-key")
-				if ipnsKey != "" {
-					err := shellInstance.Publish(ipnsKey, cids[0])
-					if err != nil {
-						fmt.Println("Error publishing to IPNS:", err)
-						return err
-					}
-					fmt.Printf("Directory published successfully via IPNS!\nIPNS Key: %s\nIPNS Link: %s%s\n", ipnsKey, gatewayURL, ipnsKey)
-					return nil
-				} else {
-					fmt.Printf("Directory published successfully via IPFS!\nIPFS Link: %s%s\n", gatewayURL, cids[0])
-					return nil
-				}
+				return publishDirectory(c.String("path"), c.String("ipns-key"))
 			},
 		},
 		{
@@ -188,38 +100,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				cid := c.String("cid")
-				if cid == "" {
-					fmt.Println("Please provide a CID using --cid")
-					return nil
-				}
-				outputFilePath := c.String("output")
-				if outputFilePath == "" {
-					fmt.Println("Please provide an output file path using --output")
-					return nil
-				}
-
-				reader, err := shellInstance.Cat(cid)
-				if err != nil {
-					fmt.Println("Error retrieving file from IPFS:", err)
-					return err
-				}
-				defer reader.Close()
-
-				data, err := ioutil.ReadAll(reader)
-				if err != nil {
-					fmt.Println("Error reading data:", err)
-					return err
-				}
-
-				err = ioutil.WriteFile(outputFilePath, data, 0644)
-				if err != nil {
-					fmt.Println("Error saving file:", err)
-					return err
-				}
-
-				fmt.Printf("File downloaded and saved to %s\n", outputFilePath)
-				return nil
+				return downloadFile(c.String("cid"), c.String("output"))
 			},
 		},
 	}
@@ -228,6 +109,134 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+func getStatus() error {
+	nodeInfo, err := shellInstance.ID()
+	if err != nil {
+		return fmt.Errorf("error getting node status: %v", err)
+	}
+	fmt.Println("Connected to IPFS node:")
+	fmt.Println("Node ID:", nodeInfo.ID)
+	fmt.Println("Agent Version:", nodeInfo.AgentVersion)
+	fmt.Println("Protocol Version:", nodeInfo.ProtocolVersion)
+	return nil
+}
+
+func addFileOrFolder(path string) error {
+	if path == "" {
+		return fmt.Errorf("please provide a file or folder path using --path")
+	}
+
+	cid, err := addPathToIPFS(path)
+	if err != nil {
+		return fmt.Errorf("error adding file or folder to IPFS: %v", err)
+	}
+
+	fmt.Printf("File or folder added and pinned to IPFS.\nCID: %s\nURL: %s%s\n", cid, gatewayURL, cid)
+
+	return nil
+}
+
+func retrieveFile(cid string) error {
+	if cid == "" {
+		return fmt.Errorf("please provide a CID using --cid")
+	}
+
+	reader, err := shellInstance.Cat(cid)
+	if err != nil {
+		return fmt.Errorf("error retrieving file from IPFS: %v", err)
+	}
+	defer reader.Close()
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("error reading data: %v", err)
+	}
+
+	fmt.Print(string(data))
+	return nil
+}
+
+func publishDirectory(dirPath, ipnsKey string) error {
+	if dirPath == "" {
+		return fmt.Errorf("please provide a directory path using --path")
+	}
+
+	// Add the entire directory to IPFS
+	cid, err := addFolderToIPFS(dirPath)
+	if err != nil {
+		return fmt.Errorf("error adding directory to IPFS: %v", err)
+	}
+
+	// If an IPNS key is provided, publish via IPNS
+	if ipnsKey != "" {
+		err := shellInstance.Publish(ipnsKey, cid)
+		if err != nil {
+			return fmt.Errorf("error publishing to IPNS: %v", err)
+		}
+		fmt.Printf("Directory published successfully via IPNS!\nIPNS Key: %s\nIPNS Link: %s%s\n", ipnsKey, gatewayURL, ipnsKey)
+		return nil
+	}
+
+	fmt.Printf("Directory published successfully via IPFS!\nIPFS Link: %s%s\n", gatewayURL, cid)
+	return nil
+}
+
+func addFolderToIPFS(folderPath string) (string, error) {
+	res, err := shellInstance.AddDir(folderPath)
+	if err != nil {
+		return "", err
+	}
+	return res, nil
+}
+
+func downloadFile(cid, outputFilePath string) error {
+	if cid == "" {
+		return fmt.Errorf("please provide a CID using --cid")
+	}
+	if outputFilePath == "" {
+		return fmt.Errorf("please provide an output file path using --output")
+	}
+
+	reader, err := shellInstance.Cat(cid)
+	if err != nil {
+		return fmt.Errorf("error retrieving file from IPFS: %v", err)
+	}
+	defer reader.Close()
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("error reading data: %v", err)
+	}
+
+	err = ioutil.WriteFile(outputFilePath, data, 0644)
+	if err != nil {
+		return fmt.Errorf("error saving file: %v", err)
+	}
+
+	fmt.Printf("File downloaded and saved to %s\n", outputFilePath)
+	return nil
+}
+func addPathToIPFS(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	if info.IsDir() {
+		return addFolderToIPFS(path)
+	}
+
+	return addFileToIPFS(path)
+}
+
+// func addFolderToIPFS(folderPath string) (string, error) {
+// 	res, err := shellInstance.AddDir(folderPath)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return res, nil
+// }
 
 func addFileToIPFS(filePath string) (string, error) {
 	file, err := os.Open(filePath)
@@ -261,48 +270,4 @@ func addFileToIPFS(filePath string) (string, error) {
 
 	bar.Finish()
 	return res, nil
-}
-
-func addPathToIPFS(path string) (string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-
-	if info.IsDir() {
-		return addFolderToIPFS(path)
-	}
-
-	return addFileToIPFS(path)
-}
-
-func addFolderToIPFS(folderPath string) (string, error) {
-	var files []string
-	err := filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-
-	if len(files) == 0 {
-		return "", fmt.Errorf("no files found in folder")
-	}
-
-	var cids []string
-	for _, filePath := range files {
-		cid, err := addFileToIPFS(filePath)
-		if err != nil {
-			return "", err
-		}
-		cids = append(cids, cid)
-	}
-
-	return cids[0], nil
 }
